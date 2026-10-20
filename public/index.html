@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>کادرینگ نود دکتر</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230c1512'/%3E%3Cpath d='M32 10l16 6v13c0 11-7 19-16 23-9-4-16-12-16-23V16z' fill='none' stroke='%2334d399' stroke-width='4'/%3E%3Cpath d='M25 32l5 5 10-11' fill='none' stroke='%2334d399' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="34" height="34">
+          <path d="M32 8l18 7v14c0 12-8 22-18 27-10-5-18-15-18-27V15z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M24 32l6 6 11-12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>کادرینگ نود دکتر</h1>
+        <p>نودهای واقعاً سالم را پیدا می‌کند</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="statusPill" class="pill"><span class="dot"></span><span id="statusPillText">در حال اتصال…</span></span>
+      <button id="runBtn" class="btn btn-primary" type="button" disabled>
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+        <span id="runBtnText">اجرای تست</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <article class="card status-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">وضعیت موتور تست</span>
+            <h2 id="phaseTitle">در حال آماده‌سازی…</h2>
+          </div>
+          <span id="runBadge" class="soft-badge">آماده</span>
+        </div>
+        <p id="phaseDesc" class="muted">تنظیمات Karing خوانده می‌شود…</p>
+        <div class="progress" role="progressbar" aria-labelledby="phaseTitle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div class="progress-meta">
+          <span id="progressLabel">در انتظار شروع</span>
+          <span id="progressPercent">۰٪</span>
+        </div>
+        <div id="runStats" class="chip-row"></div>
+        <div class="divider"></div>
+        <div id="lastRunLine" class="muted small">هنوز دوره‌ای اجرا نشده است.</div>
+      </article>
+
+      <article class="card sub-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">ساب‌سکریپشن محلی</span>
+            <h2>پروفایل «فقط سالم‌ها»</h2>
+          </div>
+          <span id="subBadge" class="soft-badge accent">۰ نود</span>
+        </div>
+        <p class="muted">این آدرس همیشه فقط نودهایی را برمی‌گرداند که آخرین تست را با موفقیت گذرانده‌اند.</p>
+        <div class="url-row">
+          <input id="subUrl" type="text" readonly dir="ltr" aria-label="آدرس ساب‌سکریپشن" value="—" />
+          <button id="copyBtn" class="btn btn-ghost" type="button">کپی</button>
+        </div>
+        <div class="sub-meta">
+          <span><strong id="subCount">۰</strong> نود در ساب</span>
+          <span class="sep" aria-hidden="true"></span>
+          <span><strong id="subHealthy">۰</strong> نود سالم تأییدشده</span>
+        </div>
+        <div id="karingSync" class="sync-box" hidden>
+          <div class="sync-head">
+            <span class="sync-dot" aria-hidden="true"></span>
+            <div class="sync-text">
+              <strong id="syncTitle">وضعیت همگام‌سازی Karing</strong>
+              <span id="syncDesc" class="muted small">در حال خواندن تنظیمات Karing…</span>
+            </div>
+            <span id="syncBadge" class="soft-badge">—</span>
+          </div>
+          <div id="syncMeta" class="sync-meta"></div>
+        </div>
+        <details class="howto">
+          <summary>چطور به Karing اضافه کنم؟</summary>
+          <ol>
+            <li>برنامه را باز نگه دارید؛ آدرس بالا باید در دسترس بماند.</li>
+            <li>در Karing بخش پروفایل‌ها / ساب‌سکریپشن‌ها را باز کنید و «افزودن پروفایل با آدرس» را بزنید.</li>
+            <li>نوع پروفایل را <b>Sing-box</b> بگذارید و آدرس بالا را وارد کنید.</li>
+            <li>یک‌بار به‌روزرسانی کنید؛ نودهای با پیشوند <code dir="ltr">CHK |</code> اضافه می‌شوند.</li>
+          </ol>
+          <p class="muted small">پروفایل‌های منبع را حذف نکنید؛ برنامه از همان‌ها نود جدید پیدا می‌کند. در ویرایش پروفایل، <b>Update Interval</b> را روی ۱ ساعت بگذارید تا Karing خودکار تازه بماند.</p>
+        </details>
+      </article>
+    </section>
+
+    <section id="statsGrid" class="stats-grid" aria-label="آمار">
+      <article class="stat-card skeleton"></article>
+      <article class="stat-card skeleton"></article>
+      <article class="stat-card skeleton"></article>
+      <article class="stat-card skeleton"></article>
+      <article class="stat-card skeleton"></article>
+      <article class="stat-card skeleton"></article>
+    </section>
+
+    <div class="layout">
+      <section class="card nodes-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">نتیجه آخرین تست‌ها</span>
+            <h2>نودهای سالم</h2>
+          </div>
+          <div class="tools">
+            <label class="search">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 105.3 12.8l4.2 4.2 1.4-1.4-4.2-4.2A7.5 7.5 0 0010.5 3zm0 2a5.5 5.5 0 110 11 5.5 5.5 0 010-11z" fill="currentColor"/></svg>
+              <input id="nodeSearch" type="search" placeholder="جستجو در نام یا پروفایل" aria-label="جستجوی نود" />
+            </label>
+            <span id="nodeCount" class="soft-badge">۰</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="nodes-table">
+            <thead>
+              <tr><th>نام نود</th><th>پروتکل</th><th>پروفایل</th><th>تأخیر</th><th>آخرین تأیید</th></tr>
+            </thead>
+            <tbody id="nodesBody">
+              <tr><td colspan="5" class="empty">هنوز نودی تأیید نشده است.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small table-hint">حداکثر ۳۰۰ نود نمایش داده می‌شود؛ ساب‌سکریپشن نودها را بر اساس کمترین تأخیر مرتب و تا سقف تنظیمات ارسال می‌کند.</p>
+      </section>
+
+      <aside class="side">
+        <section class="card web-card">
+          <div class="card-head">
+            <div><span class="eyebrow">منبع روزانه</span><h2>دریافت از اینترنت</h2></div>
+            <span id="webBadge" class="soft-badge accent">—</span>
+          </div>
+          <p class="muted small">هر ۲۴ ساعت از مخازن عمومی تأییدشده کانفیگ تازه می‌گیرد، خودش تست می‌کند و فقط سالم‌ها را به ساب‌سکریپشن اضافه می‌کند.</p>
+          <div class="web-meta">
+            <span>آخرین دریافت: <b id="webLastFetch">—</b></span>
+            <span>دریافت بعدی: <b id="webNextFetch">—</b></span>
+            <span><b id="webPoolCount">۰</b> کاندید • <b id="webHealthyCount">۰</b> سالم</span>
+          </div>
+          <label class="check web-toggle"><input id="webEnabledToggle" type="checkbox" /><span>دریافت و تست خودکار روزانه</span></label>
+          <button id="webRefreshBtn" class="btn btn-ghost wide" type="button">به‌روزرسانی و تست فوری</button>
+          <details class="web-sources">
+            <summary>وضعیت منابع (<span id="webSourceOk">۰</span> از <span id="webSourceTotal">۰</span>)</summary>
+            <div id="webSourcesList" class="web-sources-list"></div>
+          </details>
+          <p class="muted small web-warning">نودهای عمومی ناشناس‌اند؛ فقط با HTTPS و برای دسترسی معمولی استفاده کنید.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div><span class="eyebrow">منبع کاندیدها</span><h2>پروفایل‌های Karing</h2></div>
+          </div>
+          <p class="muted small">پروفایل‌های خاموش در دوره بعدی تست نمی‌شوند و نودهایشان از ساب‌سکریپشن حذف می‌شود.</p>
+          <div id="profilesList" class="profiles"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div><span class="eyebrow">پیکربندی</span><h2>تنظیمات تست</h2></div>
+          </div>
+          <form id="settingsForm" class="settings-form" novalidate>
+            <div class="field span-2">
+              <label for="setTestUrl">آدرس تست اتصال</label>
+              <input id="setTestUrl" name="testUrl" type="url" dir="ltr" spellcheck="false" />
+              <span class="hint">پیشنهاد: https://www.gstatic.com/generate_204</span>
+            </div>
+            <div class="field">
+              <label for="setTimeout">مهلت هر تست (ثانیه)</label>
+              <input id="setTimeout" type="number" min="3" max="30" step="1" />
+            </div>
+            <div class="field">
+              <label for="setConcurrency">تست هم‌زمان</label>
+              <input id="setConcurrency" type="number" min="1" max="32" step="1" />
+            </div>
+            <div class="field">
+              <label for="setMaxTests">حداکثر تست هر دوره</label>
+              <input id="setMaxTests" type="number" min="10" max="2000" step="10" />
+            </div>
+            <div class="field">
+              <label for="setMaxWorking">حداکثر نود در ساب</label>
+              <input id="setMaxWorking" type="number" min="10" max="1000" step="10" />
+            </div>
+            <div class="field">
+              <label for="setCycle">فاصله دوره‌ها (دقیقه)</label>
+              <input id="setCycle" type="number" min="5" max="1440" step="5" />
+            </div>
+            <div class="field">
+              <label for="setFails">آستانه حذف (خطای متوالی)</label>
+              <input id="setFails" type="number" min="1" max="5" step="1" />
+            </div>
+            <div class="field">
+              <label for="setTtl">عمر تأیید سالم (ساعت)</label>
+              <input id="setTtl" type="number" min="0.5" max="168" step="0.5" />
+            </div>
+            <div class="field">
+              <label for="setWebRefreshHours">تازه‌سازی اینترنت (ساعت)</label>
+              <input id="setWebRefreshHours" type="number" min="1" max="168" step="1" />
+            </div>
+            <div class="field">
+              <label for="setWebMaxPerSource">حداکثر کانفیگ هر منبع</label>
+              <input id="setWebMaxPerSource" type="number" min="50" max="1000" step="50" />
+            </div>
+            <div class="field">
+              <label for="setWebMaxPool">سقف مخزن اینترنت</label>
+              <input id="setWebMaxPool" type="number" min="100" max="10000" step="100" />
+            </div>
+            <label class="check span-2"><input id="setAutoRun" type="checkbox" /><span>اجرای خودکار دوره‌ها</span></label>
+            <button class="btn btn-primary wide span-2" type="submit" id="saveSettingsBtn">ذخیره تنظیمات</button>
+            <p class="muted small span-2">تنظیمات از دوره بعدی اعمال می‌شوند.</p>
+          </form>
+        </section>
+
+        <section class="card autostart-card" id="autostartCard" hidden>
+          <div class="switch-row">
+            <div>
+              <h3>اجرای خودکار با ویندوز</h3>
+              <p class="muted small">برنامه مخفی اجرا می‌شود و هر روز منابع را تازه، تست و ساب‌سکریپشن را به‌روز می‌کند.</p>
+            </div>
+            <label class="switch">
+              <input id="autostartToggle" type="checkbox" />
+              <span class="track" aria-hidden="true"></span>
+              <span class="sr-only">اجرای خودکار با ویندوز</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><div><span class="eyebrow">گزارش</span><h2>تاریخچه دوره‌ها</h2></div></div>
+          <div id="historyList" class="history"><p class="muted small">هنوز دوره‌ای ثبت نشده است.</p></div>
+        </section>
+      </aside>
+    </div>
+
+    <details class="card failures-card" id="failuresDetails">
+      <summary>
+        <span class="summary-title"><span class="eyebrow">در حاشیه</span><h2>نودهای ناموفق اخیر</h2></span>
+        <span id="failuresBadge" class="soft-badge danger">۰</span>
+      </summary>
+      <div id="failuresList" class="failures-list"></div>
+    </details>
+
+    <footer class="footer">
+      <p>تست با موتور <b>sing-box 1.13.13</b> (هم‌خانواده هسته Karing) انجام می‌شود و پروتکل‌های VLESS، VMess، Trojan، Shadowsocks، Hysteria، Hysteria2، TUIC، AnyTLS، Socks و HTTP پشتیبانی می‌شوند. نودهای <code dir="ltr">xhttp</code> که فقط در Karing پشتیبانی می‌شوند، تست و اضافه نمی‌شوند.</p>
+      <p class="muted small">نودهای ناموفق پس از رسیدن به آستانه خطا از ساب‌سکریپشن و مخزن حذف می‌شوند. فایل تنظیمات Karing فقط خوانده می‌شود؛ هیچ پروفایل اصلی تغییر یا حذف نمی‌شود.</p>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

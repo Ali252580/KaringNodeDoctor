@@ -1,0 +1,13 @@
+{
+  "name": "karing-node-doctor",
+  "version": "1.1.2",
+  "private": true,
+  "description": "تست خودکار نودهای Karing و ساخت ساب‌سکریپشن فقط نودهای سالم",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
