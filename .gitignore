@@ -1,6 +1,7 @@
 node_modules/
 data/
 core/
+start-hidden.vbs
 *.log
 *.tmp-*
 Thumbs.db

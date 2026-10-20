@@ -13,7 +13,7 @@ const { cleanupStaleProxy } = require('./lib/systemproxy');
 const { readSubscriptionSync } = require('./lib/karing');
 const { cleanText } = require('./lib/util');
 
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 const ROOT = __dirname;
 const HOST = '127.0.0.1';
 const BASE_PORT = Number(process.env.KND_PORT) || 3210;

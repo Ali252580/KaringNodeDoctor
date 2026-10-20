@@ -142,6 +142,10 @@ function renderStatus(status) {
       title = 'در حال خواندن کانفیگ Karing';
       desc = 'نودهای فعلی بررسی و کاندیدهای مناسب دوره بعدی انتخاب می‌شوند.';
       percent = 4;
+    } else if (run.phase === 'geo') {
+      title = 'در حال حذف نودهای روسیه';
+      desc = 'موقعیت سرورها بررسی می‌شود تا نودهای روسی از تست و ساب‌سکریپشن حذف شوند.';
+      percent = 6;
     } else {
       title = 'در حال تست نودها';
       desc = planned
@@ -193,6 +197,9 @@ function renderStatus(status) {
     if (run.web && run.web.added) {
       chips.push(`<span class="chip ok">+${fmt(run.web.added)} از اینترنت</span>`);
     }
+    if (run.geoRemoved) {
+      chips.push(`<span class="chip warn"><b>${fmt(run.geoRemoved)}</b> روسیه حذف شد</span>`);
+    }
     chips.push(`<span class="chip">اجرای ${run.trigger === 'auto' ? 'خودکار' : 'دستی'}</span>`);
   }
   $('runStats').innerHTML = chips.join('');
@@ -200,9 +207,10 @@ function renderStatus(status) {
   if (lastRun) {
     const when = relTime(lastRun.finishedAt);
     const triggerText = lastRun.trigger === 'auto' ? 'خودکار' : 'دستی';
+    const geoText = lastRun.geoRemoved ? ` • ${fmt(lastRun.geoRemoved)} روسیه حذف شد` : '';
     $('lastRunLine').textContent = lastRun.error
       ? `آخرین اجرا ${when} با خطا: ${lastRun.error}`
-      : `آخرین اجرا ${when} • ${fmt(lastRun.tested)} تست • ${formatDuration(lastRun.durationMs)} • ${triggerText}`;
+      : `آخرین اجرا ${when} • ${fmt(lastRun.tested)} تست • ${formatDuration(lastRun.durationMs)} • ${triggerText}${geoText}`;
   } else {
     $('lastRunLine').textContent = 'هنوز دوره‌ای اجرا نشده است.';
   }
