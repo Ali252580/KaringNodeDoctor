@@ -120,13 +120,18 @@
           <span id="v2Updated">—</span>
         </div>
         <div id="v2SkippedRow" class="chip-row" hidden></div>
+        <div id="v2EngineRow" class="chip-row" hidden></div>
         <button id="v2RegBtn" class="btn btn-primary wide" type="button" disabled>—</button>
+        <button id="v2CoreBtn" class="btn btn-ghost wide" type="button" hidden>تغییر موتور v2rayN به sing-box</button>
+        <button id="v2AdminBtn" class="btn btn-ghost wide" type="button" hidden>اجرای v2rayN با ادمین (برای TUN)</button>
         <p id="v2Note" class="muted small" hidden></p>
         <details class="howto">
           <summary>افزودن خودکار چطور کار می‌کند؟</summary>
           <ol>
             <li>برنامه آدرس بالا را در جدول اشتراک‌های <code dir="ltr">guiConfigs/guiNDB.db</code> ثبت می‌کند؛ نیازی به Import دستی نیست.</li>
             <li>v2rayN هر ساعت خودش آدرس را می‌خواند و فقط نودهای سالم را نگه می‌دارد.</li>
+            <li>موتور v2rayN روی <b>sing-box</b> تنظیم می‌شود؛ xray در نسخه‌های جدید نودهای بدون TLS یا <code dir="ltr">allowInsecure</code> را رد می‌کند و اتصال برقرار نمی‌شود.</li>
+            <li>حالت TUN در v2rayN فقط وقتی <b>Run as administrator</b> اجرا شود کار می‌کند؛ اگر لازم ندارید، سیستم‌پراکسی همان مرورگر کافی است.</li>
             <li>اگر v2rayN موقع ثبت کردن باز باشد، یک‌بار کامل آن را ببندید و باز کنید تا اشتراک را بارگذاری کند.</li>
             <li>برنامه باید روشن بماند؛ آدرس روی <code dir="ltr">127.0.0.1</code> است.</li>
           </ol>

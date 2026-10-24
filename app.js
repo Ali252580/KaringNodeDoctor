@@ -531,12 +531,25 @@ async function handleApi(req, res, pathname) {
     try {
       if (enable) {
         const result = await v2rayn.register(url, body && body.intervalMinutes);
+        let core = null;
+        let coreError = null;
+        if (await v2rayn.isV2rayNRunning()) {
+          coreError = 'v2rayN باز است؛ آن را کامل ببندید تا موتور sing-box را فعال کنم (بدون آن نودهای بدون TLS کار نمی‌کنند).';
+        } else {
+          try {
+            core = v2rayn.applySingboxCore(result.dbPath, url);
+          } catch (error) {
+            coreError = cleanText(error.message, 300);
+          }
+        }
         await buildV2rayNStatus(true);
         return sendJson(res, 200, {
           ok: true,
           registered: true,
+          coreApplied: Boolean(core),
           autoUpdateMinutes: result.intervalMinutes,
-          note: 'اشتراک در v2rayN ثبت شد. اگر v2rayN باز است، یک بار آن را کامل ببندید و باز کنید تا اشتراک را ببیند؛ بعد از آن خودش هر ساعت تازه می‌کند.',
+          note: coreError
+            || 'اشتراک ثبت شد و موتور v2rayN روی sing-box تنظیم شد. حالا v2rayN را باز کنید و به یکی از نودها متصل شوید.',
         });
       }
       const result = await v2rayn.unregister(url);
@@ -550,6 +563,55 @@ async function handleApi(req, res, pathname) {
       });
     } catch (error) {
       return sendJson(res, 500, { error: cleanText(error.message, 300) || 'عملیات v2rayN ناموفق بود.' });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/v2rayn/core') {
+    try {
+      const located = await v2rayn.locateDatabase(true);
+      if (!located.available) throw Object.assign(new Error(located.error), { code: 'NO_DB' });
+      if (await v2rayn.isV2rayNRunning()) {
+        return sendJson(res, 409, { error: 'برای تغییر موتور، اول v2rayN را کامل ببندید (آیکون کنار ساعت → Quit).' });
+      }
+      const result = v2rayn.applySingboxCore(located.dbPath, v2raySubUrl());
+      await buildV2rayNStatus(true);
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'تغییر موتور v2rayN ممکن نشد.' });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/v2rayn/tun') {
+    const body = await readBody(req);
+    const enable = Boolean(body && body.enable);
+    try {
+      const located = await v2rayn.locateDatabase(true);
+      if (!located.available) throw Object.assign(new Error(located.error), { code: 'NO_DB' });
+      if (await v2rayn.isV2rayNRunning()) {
+        return sendJson(res, 409, { error: 'v2rayN باز است؛ تنظیمات را موقع بستن بازنویسی می‌کند. اول آن را کامل ببندید.' });
+      }
+      const tun = v2rayn.setTunEnabled(located.dbPath, enable);
+      await buildV2rayNStatus(true);
+      return sendJson(res, 200, {
+        ok: true,
+        tun,
+        note: enable
+          ? 'حالت TUN در v2rayN روشن شد. برای TUN حتماً v2rayN را با «Run as administrator» باز کنید.'
+          : 'حالت TUN خاموش شد؛ با همین حالت، مرورگرها از طریق سیستم‌پراکسی کار می‌کنند و ادمین لازم نیست.',
+      });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'تغییر حالت TUN ممکن نشد.' });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/v2rayn/launch') {
+    try {
+      const located = await v2rayn.locateDatabase(true);
+      if (!located.available) throw Object.assign(new Error(located.error), { code: 'NO_DB' });
+      const result = await v2rayn.launchElevated(located.dbPath);
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'اجرای v2rayN ممکن نشد.' });
     }
   }
 

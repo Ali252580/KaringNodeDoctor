@@ -363,6 +363,7 @@ function renderV2rayN(client, linkCount) {
   const signature = JSON.stringify([
     total, client.available, client.running, client.registered, client.nodes,
     client.autoUpdateMinutes, client.updateTime, client.error || null,
+    client.core ? [client.core.available, client.core.singbox, client.core.tun && client.core.tun.enableTun, client.core.error || null] : null,
   ]);
   if (v2RegSignature === signature) return;
   v2RegSignature = signature;
@@ -387,6 +388,33 @@ function renderV2rayN(client, linkCount) {
     ? `آخرین دریافت: ${relTimeFromTs(client.updateTime)} • هر ${fmt(client.autoUpdateMinutes || 60)} دقیقه`
     : `وضعیت v2rayN: ${client.running ? 'باز است' : 'بسته است'}`;
 
+  const core = client.core || {};
+  const engine = $('v2EngineRow');
+  const chips = [];
+  if (core.available) {
+    chips.push(core.singbox
+      ? '<span class="chip ok">موتور: sing-box</span>'
+      : '<span class="chip warn">موتور: xray — نودهای بدون TLS را رد می‌کند</span>');
+    if (core.tun && core.tun.enableTun) {
+      chips.push(`<span class="chip warn">TUN روشن است • فقط با Run as administrator</span>`);
+    }
+  } else if (core.error) {
+    chips.push(`<span class="chip warn">${escapeHtml(core.error)}</span>`);
+  }
+  engine.innerHTML = chips.join('');
+  engine.hidden = !chips.length;
+
+  const coreBtn = $('v2CoreBtn');
+  coreBtn.hidden = !(client.registered && core.available && !core.singbox);
+  coreBtn.disabled = Boolean(client.running) || v2Busy;
+  coreBtn.textContent = client.running
+    ? 'برای تغییر موتور، اول v2rayN را ببندید'
+    : 'تغییر موتور v2rayN به sing-box';
+
+  const adminBtn = $('v2AdminBtn');
+  adminBtn.hidden = !(core.available && core.tun && core.tun.enableTun);
+  adminBtn.disabled = v2Busy;
+
   if (!v2Busy) {
     button.disabled = false;
     button.textContent = client.registered ? 'حذف اشتراک از v2rayN' : 'افزودن خودکار به v2rayN';
@@ -395,6 +423,9 @@ function renderV2rayN(client, linkCount) {
   if (client.registered && client.running && (client.nodes || 0) === 0) {
     note.hidden = false;
     note.textContent = 'v2rayN باز است و اشتراک را در حافظه ندارد؛ یک‌بار کامل ببندید و باز کنید تا نودها وارد شوند.';
+  } else if (client.registered && core.available && !core.singbox) {
+    note.hidden = false;
+    note.textContent = 'v2rayN نودها را با موتور xray اجرا می‌کند و نودهای بدون TLS یا ناامین را وصل نمی‌کند. با دکمهٔ پایین موتور را sing-box کنید (v2rayN باید بسته باشد؛ تست برنامه هم با sing-box انجام می‌شود).';
   } else if (client.registered && total > (client.nodes || 0)) {
     note.hidden = false;
     note.textContent = `${fmt(total - (client.nodes || 0))} لینک وارد نشده است — v2rayN لینک‌های http:// را از اشتراک نمی‌خواند.`;
@@ -981,6 +1012,42 @@ $('v2RegBtn').addEventListener('click', async () => {
     await refreshStatus(false);
   } finally {
     v2Busy = false;
+  }
+});
+
+$('v2CoreBtn').addEventListener('click', async () => {
+  const button = $('v2CoreBtn');
+  v2Busy = true;
+  button.disabled = true;
+  button.textContent = 'در حال نوشتن تنظیمات v2rayN…';
+  try {
+    const result = await api('/api/v2rayn/core', { method: 'POST', body: '{}' });
+    v2RegSignature = '';
+    toast(`موتور v2rayN روی sing-box تنظیم شد (${fmt(result.profiles || 0)} نود به‌روز شد).`);
+    await refreshStatus(false);
+  } catch (error) {
+    toast(error.message, true);
+    v2RegSignature = '';
+    await refreshStatus(false);
+  } finally {
+    v2Busy = false;
+  }
+});
+
+$('v2AdminBtn').addEventListener('click', async () => {
+  const button = $('v2AdminBtn');
+  v2Busy = true;
+  button.disabled = true;
+  button.textContent = 'در انتظار تأیید UAC…';
+  try {
+    await api('/api/v2rayn/launch', { method: 'POST', body: '{}' });
+    toast('v2rayN با ادمین بالا آمد؛ حالا حالت TUN کار می‌کند.');
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    v2Busy = false;
+    button.disabled = false;
+    button.textContent = 'اجرای v2rayN با ادمین (برای TUN)';
   }
 });
 
