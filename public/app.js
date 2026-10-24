@@ -222,6 +222,8 @@ function renderStatus(status) {
   $('subBadge').textContent = `${fmt(status.subscription.output)} نود`;
 
   renderKaringSync(status);
+  renderV2ray(status);
+  renderTun(status);
   renderStats(status);
   renderWeb(status);
   populateSettings(status.settings);
@@ -297,6 +299,99 @@ function renderKaringSync(status) {
   $('syncBadge').textContent = badge;
   $('syncBadge').className = `soft-badge ${kind === 'ok' ? 'accent' : (kind === 'danger' ? 'danger' : 'warn')}`;
   $('syncMeta').innerHTML = meta.map((item) => `<span>${escapeHtml(item)}</span>`).join('');
+}
+
+let v2SkippedSignature = '';
+
+const SKIPPED_LABELS = {
+  hysteria: 'hysteria v1',
+  tuic: 'tuic',
+  anytls: 'anytls',
+  shadowtls: 'shadowtls',
+  wireguard: 'wireguard',
+};
+
+function renderV2ray(status) {
+  const info = status.subscription && status.subscription.v2ray;
+  if (!info) return;
+  const url = `${location.origin}${info.path}`;
+  if ($('v2Url').value !== url) $('v2Url').value = url;
+  $('v2Count').textContent = fmt(info.count);
+  $('v2Skipped').textContent = fmt(info.skippedCount || 0);
+  $('v2Badge').textContent = `${fmt(info.count)} لینک`;
+
+  const skipped = Object.entries(info.skipped || {});
+  const row = $('v2SkippedRow');
+  const signature = skipped.map(([type, count]) => `${type}:${count}`).join(',');
+  if (v2SkippedSignature !== signature) {
+    v2SkippedSignature = signature;
+    row.innerHTML = skipped.map(([type, count]) => `<span class="chip warn"><b>${fmt(count)}</b> ${escapeHtml(SKIPPED_LABELS[type] || type)}</span>`).join('');
+  }
+  row.hidden = !skipped.length;
+}
+
+let tunBusy = false;
+let tunSignature = '';
+
+function renderTun(status) {
+  const tun = status.karingTun;
+  const badge = $('tunBadge');
+  const button = $('tunBtn');
+  const note = $('tunNote');
+  const running = status.karingRunning;
+
+  if (!tun || !tun.available) {
+    if (tunSignature !== 'missing') {
+      tunSignature = 'missing';
+      badge.textContent = 'نامشخص';
+      badge.className = 'soft-badge warn';
+      $('tunDesc').textContent = (tun && tun.error) || 'تنظیمات Karing در دسترس نیست.';
+      $('tunMeta').innerHTML = '';
+      button.disabled = true;
+      button.textContent = 'تنظیمات Karing پیدا نشد';
+      note.hidden = true;
+    }
+    return;
+  }
+
+  const enabled = Boolean(tun.enable);
+  const signature = JSON.stringify([enabled, tun.stack, tun.autoRoute, tun.strictRoute, tun.hijackDns, tun.mtu, tun.proxyAll, running]);
+  if (tunSignature === signature) return;
+  tunSignature = signature;
+
+  badge.textContent = enabled ? 'روشن' : 'خاموش';
+  badge.className = `soft-badge ${enabled ? 'accent' : 'warn'}`;
+  $('tunDesc').textContent = enabled
+    ? 'حالت TUN در تنظیمات Karing روشن است؛ ترافیک کل سیستم ازVPN عبور می‌کند.'
+    : 'حالت TUN خاموش است. با روشن کردن آن، مرورگرها و اپ‌های هوش مصنوعی هم (بدون تنظیم پراکسی دستی) از مسیر عبور می‌کنند.';
+
+  const meta = [
+    `پشته شبکه: ${tun.stack || 'mixed'}`,
+    `مسیردهی خودکار: ${tun.autoRoute ? 'روشن' : 'خاموش'}`,
+    `مسیردهی سخت: ${tun.strictRoute ? 'روشن' : 'خاموش'}`,
+    `ربط DNS: ${tun.hijackDns ? 'روشن' : 'خاموش'}`,
+  ];
+  if (tun.mtu) meta.push(`MTU: ${fmt(tun.mtu)}`);
+  $('tunMeta').innerHTML = meta.map((item) => `<span>${escapeHtml(item)}</span>`).join('');
+
+  if (!tunBusy) {
+    button.disabled = false;
+    button.textContent = enabled ? 'خاموش کردن TUN' : 'روشن کردن TUN';
+  }
+
+  if (running === true) {
+    note.hidden = false;
+    note.textContent = enabled
+      ? 'Karing الان اجراست. برای اینکه TUN واقعاً فعال شود، آن را کامل ببندید (راست‌کلیک روی آیکون کنار ساعت → Quit) و دوباره باز کنید و متصل شوید.'
+      : 'Karing الان اجراست؛ اگر پیش‌تر تنظیم را تغییر داده‌اید، برای دیدن وضعیت واقعی آن را ببندید و باز کنید.';
+  } else if (running === false) {
+    note.hidden = false;
+    note.textContent = enabled
+      ? 'Karing بسته است؛ تنظیم ذخیره شده و با اجرای بعدی و اتصال، TUN فعال می‌شود.'
+      : 'Karing بسته است؛ می‌توانید بدون نگرانی از بازنویسی تنظیم را روشن کنید.';
+  } else {
+    note.hidden = true;
+  }
 }
 
 function renderStats(status) {
@@ -749,6 +844,47 @@ $('copyBtn').addEventListener('click', async () => {
     } catch {
       toast('کپی خودکار ممکن نشد؛ آدرس را دستی انتخاب کنید.', true);
     }
+  }
+});
+
+$('copyV2Btn').addEventListener('click', async () => {
+  const input = $('v2Url');
+  try {
+    await navigator.clipboard.writeText(input.value);
+    toast('آدرس لینک‌های v2ray کپی شد.');
+  } catch {
+    input.select();
+    try {
+      document.execCommand('copy');
+      toast('آدرس لینک‌های v2ray کپی شد.');
+    } catch {
+      toast('کپی خودکار ممکن نشد؛ آدرس را دستی انتخاب کنید.', true);
+    }
+  }
+});
+
+$('tunBtn').addEventListener('click', async () => {
+  const button = $('tunBtn');
+  const target = !(lastStatus && lastStatus.karingTun && lastStatus.karingTun.enable);
+  tunBusy = true;
+  button.disabled = true;
+  button.textContent = 'در حال ذخیره…';
+  try {
+    const result = await api('/api/karing/tun', {
+      method: 'POST',
+      body: JSON.stringify({ enable: target }),
+    });
+    tunSignature = '';
+    toast(target
+      ? `حالت TUN روشن شد. ${result.note || ''}`
+      : `حالت TUN خاموش شد. ${result.note || ''}`);
+    await refreshStatus(false);
+  } catch (error) {
+    toast(error.message, true);
+    button.disabled = false;
+    button.textContent = target ? 'روشن کردن TUN' : 'خاموش کردن TUN';
+  } finally {
+    tunBusy = false;
   }
 });
 

@@ -7,13 +7,13 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { Store, isHealthy } = require('./lib/state');
 const { Scheduler } = require('./lib/scheduler');
-const { buildSubscription, healthyRecords } = require('./lib/subgen');
+const { buildSubscription, buildV2raySubscription, healthyRecords } = require('./lib/subgen');
 const { coreAvailable, CORE_PATH, stopAllTestProcesses } = require('./lib/tester');
 const { cleanupStaleProxy } = require('./lib/systemproxy');
-const { readSubscriptionSync } = require('./lib/karing');
+const { readSubscriptionSync, readTunSetting, writeTunSetting, isKaringRunning } = require('./lib/karing');
 const { cleanText } = require('./lib/util');
 
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 const ROOT = __dirname;
 const HOST = '127.0.0.1';
 const BASE_PORT = Number(process.env.KND_PORT) || 3210;
@@ -294,6 +294,43 @@ function buildKaringSync(karing, counts) {
   };
 }
 
+function buildTunStatus(dataDir) {
+  if (!dataDir) return { available: false, error: 'تنظیمات Karing در دسترس نیست.' };
+  try {
+    return readTunSetting(dataDir);
+  } catch (error) {
+    return { available: false, error: cleanText(error.message, 300) };
+  }
+}
+
+let runningProbe = { at: 0, value: null };
+async function probeKaringRunning(dataDir) {
+  if (!dataDir) return null;
+  if (runningProbe.value !== null && Date.now() - runningProbe.at < 5000) return runningProbe.value;
+  let value = false;
+  try {
+    value = await isKaringRunning(dataDir);
+  } catch {
+    value = false;
+  }
+  runningProbe = { at: Date.now(), value };
+  return value;
+}
+
+function buildV2rayInfo() {
+  try {
+    const generated = buildV2raySubscription(store);
+    return {
+      path: `/v2ray/${store.data.subToken}.txt`,
+      count: generated.count,
+      skipped: generated.skipped,
+      skippedCount: generated.skippedCount,
+    };
+  } catch {
+    return { path: `/v2ray/${store.data.subToken}.txt`, count: 0, skipped: {}, skippedCount: 0 };
+  }
+}
+
 function buildStatus(autostart) {
   const counts = countsSnapshot();
   let karing;
@@ -312,6 +349,7 @@ function buildStatus(autostart) {
     },
     karing,
     karingSync: buildKaringSync(karing, counts),
+    karingTun: buildTunStatus(karing.dataDir),
     web: {
       enabled: Boolean(store.data.settings.webEnabled),
       ...scheduler.web.counts(),
@@ -325,6 +363,7 @@ function buildStatus(autostart) {
       path: `/sub/${store.data.subToken}.json`,
       output: counts.output,
       healthy: counts.healthy,
+      v2ray: buildV2rayInfo(),
     },
     autostart,
   };
@@ -349,7 +388,9 @@ function nodeSummary(record) {
 async function handleApi(req, res, pathname) {
   if (req.method === 'GET' && pathname === '/api/status') {
     const autostart = await getAutostart();
-    return sendJson(res, 200, buildStatus(autostart));
+    const status = buildStatus(autostart);
+    status.karingRunning = await probeKaringRunning(status.karing && status.karing.dataDir);
+    return sendJson(res, 200, status);
   }
 
   if (req.method === 'GET' && pathname === '/api/profiles') {
@@ -428,6 +469,36 @@ async function handleApi(req, res, pathname) {
     });
   }
 
+  if (req.method === 'POST' && pathname === '/api/karing/tun') {
+    const body = await readBody(req);
+    const enable = Boolean(body && body.enable);
+    let dataDir;
+    try {
+      dataDir = scheduler.scanKaring(60_000).dataDir;
+    } catch (error) {
+      return sendJson(res, 503, { error: cleanText(error.message, 300) || 'تنظیمات Karing در دسترس نیست.' });
+    }
+    try {
+      const tun = writeTunSetting(dataDir, enable);
+      runningProbe = { at: 0, value: null };
+      const running = await probeKaringRunning(dataDir);
+      return sendJson(res, 200, {
+        ok: true,
+        tun,
+        running,
+        note: running
+          ? (enable
+            ? 'برای روشن شدن واقعی، Karing را کامل ببندید (از آیکون کنار ساعت) و دوباره باز کنید.'
+            : 'برای خاموش شدن واقعی، Karing را کامل ببندید (از آیکون کنار ساعت) و دوباره باز کنید.')
+          : (enable
+            ? 'تنظیم ذخیره شد؛ با اجرای بعدی Karing و اتصال، TUN فعال می‌شود.'
+            : 'تنظیم ذخیره شد؛ با اجرای بعدی Karing حالت TUN خاموش می‌ماند.'),
+      });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'تغییر حالت TUN ممکن نشد.' });
+    }
+  }
+
   if (pathname === '/api/autostart') {
     if (req.method === 'GET') {
       return sendJson(res, 200, await getAutostart());
@@ -491,6 +562,25 @@ async function handler(req, res) {
       'X-Node-Count': String(subscription.count),
     });
     return res.end(JSON.stringify(subscription));
+  }
+
+  if (pathname.startsWith('/v2ray/')) {
+    const name = decodeURIComponent(pathname.slice('/v2ray/'.length));
+    const token = name.replace(/\.txt$/i, '');
+    if (!safeTokenEqual(token, store.data.subToken)) {
+      applyHeaders(res);
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end('not found');
+    }
+    const generated = buildV2raySubscription(store);
+    applyHeaders(res);
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Node-Count': String(generated.count),
+      'X-Skipped-Count': String(generated.skippedCount),
+    });
+    return res.end(generated.base64);
   }
 
   const entry = STATIC_FILES.get(pathname);
@@ -570,6 +660,7 @@ async function main() {
   console.log(`Karing Node Doctor v${VERSION}`);
   console.log(`داشبورد: ${url}`);
   console.log(`آدرس ساب‌سکریپشن برای Karing: ${url}/sub/${store.data.subToken}.json`);
+  console.log(`آدرس لینک‌ها برای v2rayA:      ${url}/v2ray/${store.data.subToken}.txt`);
   console.log('برای توقف: Ctrl+C');
   console.log('');
 

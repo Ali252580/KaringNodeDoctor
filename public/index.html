@@ -98,6 +98,58 @@
       </article>
     </section>
 
+    <section class="hero">
+      <article class="card sub-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">خروجی دوم</span>
+            <h2>لینک‌ها برای v2rayA</h2>
+          </div>
+          <span id="v2Badge" class="soft-badge accent">۰ لینک</span>
+        </div>
+        <p class="muted">همان نودهای سالم، این‌بار به شکل لینک آماده vless / vmess / trojan / ss.</p>
+        <div class="url-row">
+          <input id="v2Url" type="text" readonly dir="ltr" aria-label="آدرس لینک‌های v2ray" value="—" />
+          <button id="copyV2Btn" class="btn btn-ghost" type="button">کپی</button>
+        </div>
+        <div class="sub-meta">
+          <span><strong id="v2Count">۰</strong> لینک آماده</span>
+          <span class="sep" aria-hidden="true"></span>
+          <span><strong id="v2Skipped">۰</strong> نود فقط برای Karing</span>
+        </div>
+        <div id="v2SkippedRow" class="chip-row" hidden></div>
+        <details class="howto">
+          <summary>چطور به v2rayA اضافه کنم؟</summary>
+          <ol>
+            <li>روی آدرس بالا کلیک راست کنید و «میانبر» را روی دسکتاپ بسازید؛ v2rayA فقط آدرس وب را می‌پذیرد.</li>
+            <li>در v2rayA بخش <b>Servers</b> → <b>Add</b> → <b>By subscription link</b> را بزنید.</li>
+            <li>آدرس بالا را دقیقاً به همان شکل <code dir="ltr">http://127.0.0.1:…/v2ray/….txt</code> وارد کنید و <b>Import</b> بزنید.</li>
+            <li>یک نود را انتخاب و <b>Connect</b> کنید؛ حالت <b>TUN</b> را در خود v2rayA روشن کنید.</li>
+          </ol>
+          <p class="muted small">برنامه باید روشن و باز بماند تا v2rayA بتواند آدرس را بخواند. بعد از هر دوره تست، یک‌بار در v2rayA به‌روزرسانی بگیرید.</p>
+        </details>
+      </article>
+
+      <article class="card sub-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">Karing</span>
+            <h2>حالت TUN</h2>
+          </div>
+          <span id="tunBadge" class="soft-badge">—</span>
+        </div>
+        <p class="muted" id="tunDesc">وضعیت TUN در تنظیمات Karing خوانده می‌شود.</p>
+        <div id="tunMeta" class="sub-meta"></div>
+        <button id="tunBtn" class="btn btn-ghost wide" type="button" disabled>—</button>
+        <p id="tunNote" class="muted small" hidden></p>
+        <details class="howto">
+          <summary>چرا باید Karing را بست؟</summary>
+          <p class="muted small">این دکمه مقدار <code dir="ltr">tun.enable</code> را در فایل تنظیمات Karing تغییر می‌دهد. Karing وقتی اجراست این فایل را در حافظه نگه می‌دارد و موقع بستن دوباره می‌نویسد؛ برای همین باید یک‌بار کامل (از آیکون کنار ساعت) بسته و باز شود تا حالت TUN اعمال شود. اتصال مجدد هم لازم است.</p>
+          <p class="muted small">قبل از هر تغییر، نسخه پشتیبان از فایل تنظیمات در همان پوشه Karing ساخته می‌شود.</p>
+        </details>
+      </article>
+    </section>
+
     <section id="statsGrid" class="stats-grid" aria-label="آمار">
       <article class="stat-card skeleton"></article>
       <article class="stat-card skeleton"></article>
