@@ -311,14 +311,21 @@ const SKIPPED_LABELS = {
   wireguard: 'wireguard',
 };
 
+function relTimeFromTs(seconds) {
+  const ms = Number(seconds) * 1000;
+  if (!Number.isFinite(ms) || ms < 1_000 || ms > Date.now() + 60_000) return 'هنوز دریافت نشده';
+  return relTime(ms);
+}
+
+let v2Busy = false;
+let v2RegSignature = '';
+
 function renderV2ray(status) {
   const info = status.subscription && status.subscription.v2ray;
   if (!info) return;
-  const url = `${location.origin}${info.path}`;
+  const url = info.url || `${location.origin}${info.path}`;
   if ($('v2Url').value !== url) $('v2Url').value = url;
   $('v2Count').textContent = fmt(info.count);
-  $('v2Skipped').textContent = fmt(info.skippedCount || 0);
-  $('v2Badge').textContent = `${fmt(info.count)} لینک`;
 
   const skipped = Object.entries(info.skipped || {});
   const row = $('v2SkippedRow');
@@ -328,6 +335,72 @@ function renderV2ray(status) {
     row.innerHTML = skipped.map(([type, count]) => `<span class="chip warn"><b>${fmt(count)}</b> ${escapeHtml(SKIPPED_LABELS[type] || type)}</span>`).join('');
   }
   row.hidden = !skipped.length;
+
+  renderV2rayN(status.v2rayN, info.count);
+}
+
+function renderV2rayN(client, linkCount) {
+  const badge = $('v2Badge');
+  const button = $('v2RegBtn');
+  const note = $('v2Note');
+
+  if (!client) {
+    $('v2Nodes').textContent = '—';
+    $('v2Updated').textContent = 'در حال بررسی v2rayN…';
+    if (!v2Busy) {
+      button.disabled = true;
+      button.textContent = 'در حال بررسی…';
+    }
+    return;
+  }
+
+  const total = Number(linkCount) || 0;
+  badge.className = `soft-badge ${client.available && client.registered ? 'accent' : 'warn'}`;
+  badge.textContent = !client.available
+    ? 'v2rayN پیدا نشد'
+    : (client.registered ? `خودکار • ${fmt(total)} لینک` : `ثبت‌نشده • ${fmt(total)} لینک`);
+
+  const signature = JSON.stringify([
+    total, client.available, client.running, client.registered, client.nodes,
+    client.autoUpdateMinutes, client.updateTime, client.error || null,
+  ]);
+  if (v2RegSignature === signature) return;
+  v2RegSignature = signature;
+
+  if (!client.available) {
+    $('v2Nodes').textContent = '—';
+    $('v2Updated').textContent = 'v2rayN روی این سیستم شناسایی نشد';
+    $('v2Desc').textContent = client.error
+      || 'پوشه v2rayN پیدا نشد. اگر در جای دیگری نصب است، متغیر KND_V2N_DIR را به همان مسیر تنظیم کنید.';
+    button.disabled = true;
+    button.textContent = 'v2rayN پیدا نشد';
+    note.hidden = true;
+    return;
+  }
+
+  $('v2Desc').textContent = client.registered
+    ? 'اشتراک در v2rayN ثبت شده و خودش هر ساعت نودهای سالم تازه را می‌گیرد.'
+    : 'با یک کلیک، این اشتراک داخل v2rayN ثبت می‌شود و از این به بعد خودکار تازه می‌ماند.';
+
+  $('v2Nodes').textContent = fmt(client.nodes || 0);
+  $('v2Updated').textContent = client.registered
+    ? `آخرین دریافت: ${relTimeFromTs(client.updateTime)} • هر ${fmt(client.autoUpdateMinutes || 60)} دقیقه`
+    : `وضعیت v2rayN: ${client.running ? 'باز است' : 'بسته است'}`;
+
+  if (!v2Busy) {
+    button.disabled = false;
+    button.textContent = client.registered ? 'حذف اشتراک از v2rayN' : 'افزودن خودکار به v2rayN';
+  }
+
+  if (client.registered && client.running && (client.nodes || 0) === 0) {
+    note.hidden = false;
+    note.textContent = 'v2rayN باز است و اشتراک را در حافظه ندارد؛ یک‌بار کامل ببندید و باز کنید تا نودها وارد شوند.';
+  } else if (client.registered && total > (client.nodes || 0)) {
+    note.hidden = false;
+    note.textContent = `${fmt(total - (client.nodes || 0))} لینک وارد نشده است — v2rayN لینک‌های http:// را از اشتراک نمی‌خواند.`;
+  } else {
+    note.hidden = true;
+  }
 }
 
 let tunBusy = false;
@@ -885,6 +958,29 @@ $('tunBtn').addEventListener('click', async () => {
     button.textContent = target ? 'روشن کردن TUN' : 'خاموش کردن TUN';
   } finally {
     tunBusy = false;
+  }
+});
+
+$('v2RegBtn').addEventListener('click', async () => {
+  const button = $('v2RegBtn');
+  const enable = !(lastStatus && lastStatus.v2rayN && lastStatus.v2rayN.registered);
+  v2Busy = true;
+  button.disabled = true;
+  button.textContent = 'در حال نوشتن در v2rayN…';
+  try {
+    const result = await api('/api/v2rayn/register', {
+      method: 'POST',
+      body: JSON.stringify({ enable }),
+    });
+    v2RegSignature = '';
+    toast(`${enable ? 'اشتراک به v2rayN اضافه شد.' : 'اشتراک از v2rayN حذف شد.'} ${result.note || ''}`);
+    await refreshStatus(false);
+  } catch (error) {
+    toast(error.message, true);
+    v2RegSignature = '';
+    await refreshStatus(false);
+  } finally {
+    v2Busy = false;
   }
 });
 

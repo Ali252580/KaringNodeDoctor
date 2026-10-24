@@ -103,11 +103,11 @@
         <div class="card-head">
           <div>
             <span class="eyebrow">خروجی دوم</span>
-            <h2>لینک‌ها برای v2rayA</h2>
+            <h2>افزودن خودکار به v2rayN</h2>
           </div>
-          <span id="v2Badge" class="soft-badge accent">۰ لینک</span>
+          <span id="v2Badge" class="soft-badge accent">—</span>
         </div>
-        <p class="muted">همان نودهای سالم، این‌بار به شکل لینک آماده vless / vmess / trojan / ss.</p>
+        <p class="muted" id="v2Desc">همان نودهای سالم به شکل لینک vless / vmess / trojan / ss؛ این‌بار مستقیم در پایگاه‌داده v2rayN ثبت می‌شوند.</p>
         <div class="url-row">
           <input id="v2Url" type="text" readonly dir="ltr" aria-label="آدرس لینک‌های v2ray" value="—" />
           <button id="copyV2Btn" class="btn btn-ghost" type="button">کپی</button>
@@ -115,18 +115,22 @@
         <div class="sub-meta">
           <span><strong id="v2Count">۰</strong> لینک آماده</span>
           <span class="sep" aria-hidden="true"></span>
-          <span><strong id="v2Skipped">۰</strong> نود فقط برای Karing</span>
+          <span><strong id="v2Nodes">۰</strong> نود در v2rayN</span>
+          <span class="sep" aria-hidden="true"></span>
+          <span id="v2Updated">—</span>
         </div>
         <div id="v2SkippedRow" class="chip-row" hidden></div>
+        <button id="v2RegBtn" class="btn btn-primary wide" type="button" disabled>—</button>
+        <p id="v2Note" class="muted small" hidden></p>
         <details class="howto">
-          <summary>چطور به v2rayA اضافه کنم؟</summary>
+          <summary>افزودن خودکار چطور کار می‌کند؟</summary>
           <ol>
-            <li>روی آدرس بالا کلیک راست کنید و «میانبر» را روی دسکتاپ بسازید؛ v2rayA فقط آدرس وب را می‌پذیرد.</li>
-            <li>در v2rayA بخش <b>Servers</b> → <b>Add</b> → <b>By subscription link</b> را بزنید.</li>
-            <li>آدرس بالا را دقیقاً به همان شکل <code dir="ltr">http://127.0.0.1:…/v2ray/….txt</code> وارد کنید و <b>Import</b> بزنید.</li>
-            <li>یک نود را انتخاب و <b>Connect</b> کنید؛ حالت <b>TUN</b> را در خود v2rayA روشن کنید.</li>
+            <li>برنامه آدرس بالا را در جدول اشتراک‌های <code dir="ltr">guiConfigs/guiNDB.db</code> ثبت می‌کند؛ نیازی به Import دستی نیست.</li>
+            <li>v2rayN هر ساعت خودش آدرس را می‌خواند و فقط نودهای سالم را نگه می‌دارد.</li>
+            <li>اگر v2rayN موقع ثبت کردن باز باشد، یک‌بار کامل آن را ببندید و باز کنید تا اشتراک را بارگذاری کند.</li>
+            <li>برنامه باید روشن بماند؛ آدرس روی <code dir="ltr">127.0.0.1</code> است.</li>
           </ol>
-          <p class="muted small">برنامه باید روشن و باز بماند تا v2rayA بتواند آدرس را بخواند. بعد از هر دوره تست، یک‌بار در v2rayA به‌روزرسانی بگیرید.</p>
+          <p class="muted small">برای v2rayA هم همین آدرس کار می‌کند؛ فقط باید دستی <b>Import</b> بگیرید.</p>
         </details>
       </article>
 

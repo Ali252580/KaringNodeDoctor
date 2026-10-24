@@ -12,8 +12,9 @@ const { coreAvailable, CORE_PATH, stopAllTestProcesses } = require('./lib/tester
 const { cleanupStaleProxy } = require('./lib/systemproxy');
 const { readSubscriptionSync, readTunSetting, writeTunSetting, isKaringRunning } = require('./lib/karing');
 const { cleanText } = require('./lib/util');
+const v2rayn = require('./lib/v2rayn');
 
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 const ROOT = __dirname;
 const HOST = '127.0.0.1';
 const BASE_PORT = Number(process.env.KND_PORT) || 3210;
@@ -322,13 +323,32 @@ function buildV2rayInfo() {
     const generated = buildV2raySubscription(store);
     return {
       path: `/v2ray/${store.data.subToken}.txt`,
+      url: v2raySubUrl(),
       count: generated.count,
       skipped: generated.skipped,
       skippedCount: generated.skippedCount,
     };
   } catch {
-    return { path: `/v2ray/${store.data.subToken}.txt`, count: 0, skipped: {}, skippedCount: 0 };
+    return { path: `/v2ray/${store.data.subToken}.txt`, url: v2raySubUrl(), count: 0, skipped: {}, skippedCount: 0 };
   }
+}
+
+function v2raySubUrl() {
+  return `http://${HOST}:${boundPort}/v2ray/${store.data.subToken}.txt`;
+}
+
+let v2nCache = { at: 0, value: null };
+async function buildV2rayNStatus(force = false) {
+  const ttl = v2rayn.sqliteAvailable() ? 20_000 : 5_000;
+  if (!force && v2nCache.value && Date.now() - v2nCache.at < ttl) return v2nCache.value;
+  let value;
+  try {
+    value = await v2rayn.inspect(v2raySubUrl());
+  } catch (error) {
+    value = { available: false, error: cleanText(error.message, 300), registered: false, nodes: 0 };
+  }
+  v2nCache = { at: Date.now(), value };
+  return value;
 }
 
 function buildStatus(autostart) {
@@ -390,6 +410,7 @@ async function handleApi(req, res, pathname) {
     const autostart = await getAutostart();
     const status = buildStatus(autostart);
     status.karingRunning = await probeKaringRunning(status.karing && status.karing.dataDir);
+    status.v2rayN = await buildV2rayNStatus();
     return sendJson(res, 200, status);
   }
 
@@ -496,6 +517,39 @@ async function handleApi(req, res, pathname) {
       });
     } catch (error) {
       return sendJson(res, 500, { error: cleanText(error.message, 300) || 'تغییر حالت TUN ممکن نشد.' });
+    }
+  }
+
+  if (req.method === 'GET' && pathname === '/api/v2rayn') {
+    return sendJson(res, 200, await buildV2rayNStatus(true));
+  }
+
+  if (req.method === 'POST' && pathname === '/api/v2rayn/register') {
+    const body = await readBody(req);
+    const enable = Boolean(body && body.enable);
+    const url = v2raySubUrl();
+    try {
+      if (enable) {
+        const result = await v2rayn.register(url, body && body.intervalMinutes);
+        await buildV2rayNStatus(true);
+        return sendJson(res, 200, {
+          ok: true,
+          registered: true,
+          autoUpdateMinutes: result.intervalMinutes,
+          note: 'اشتراک در v2rayN ثبت شد. اگر v2rayN باز است، یک بار آن را کامل ببندید و باز کنید تا اشتراک را ببیند؛ بعد از آن خودش هر ساعت تازه می‌کند.',
+        });
+      }
+      const result = await v2rayn.unregister(url);
+      await buildV2rayNStatus(true);
+      return sendJson(res, 200, {
+        ok: true,
+        registered: false,
+        note: result.removed
+          ? 'اشتراک KaringNodeDoctor از v2rayN حذف شد.'
+          : 'اشتراکی برای حذف پیدا نشد.',
+      });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'عملیات v2rayN ناموفق بود.' });
     }
   }
 
@@ -660,7 +714,7 @@ async function main() {
   console.log(`Karing Node Doctor v${VERSION}`);
   console.log(`داشبورد: ${url}`);
   console.log(`آدرس ساب‌سکریپشن برای Karing: ${url}/sub/${store.data.subToken}.json`);
-  console.log(`آدرس لینک‌ها برای v2rayA:      ${url}/v2ray/${store.data.subToken}.txt`);
+  console.log(`آدرس لینک‌ها برای v2rayN/v2rayA: ${url}/v2ray/${store.data.subToken}.txt`);
   console.log('برای توقف: Ctrl+C');
   console.log('');
 
