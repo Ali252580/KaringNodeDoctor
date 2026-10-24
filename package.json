@@ -1,8 +1,8 @@
 {
   "name": "karing-node-doctor",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "private": true,
-  "description": "تست خودکار نودهای Karing و ساخت ساب‌سکریپشن فقط نودهای سالم",
+  "description": "تست خودکار نودهای Karing و ساخت ساب‌سکریپشن و لینک v2ray فقط از نودهای سالم",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
