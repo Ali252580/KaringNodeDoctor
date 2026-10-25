@@ -9,12 +9,12 @@ const { Store, isHealthy } = require('./lib/state');
 const { Scheduler } = require('./lib/scheduler');
 const { buildSubscription, buildV2raySubscription, healthyRecords } = require('./lib/subgen');
 const { coreAvailable, CORE_PATH, stopAllTestProcesses } = require('./lib/tester');
-const { cleanupStaleProxy } = require('./lib/systemproxy');
+const { cleanupStaleProxy, activeLocalProxy } = require('./lib/systemproxy');
 const { readSubscriptionSync, readTunSetting, writeTunSetting, isKaringRunning } = require('./lib/karing');
 const { cleanText } = require('./lib/util');
 const v2rayn = require('./lib/v2rayn');
 
-const VERSION = '1.1.6';
+const VERSION = '1.1.7';
 const ROOT = __dirname;
 const HOST = '127.0.0.1';
 const BASE_PORT = Number(process.env.KND_PORT) || 3210;
@@ -26,7 +26,7 @@ const DATA_DIR = process.env.KND_STATE_DIR
   ? path.resolve(process.env.KND_STATE_DIR)
   : path.join(ROOT, 'data');
 const store = new Store(DATA_DIR);
-const scheduler = new Scheduler(store);
+const scheduler = new Scheduler(store, { throttle: testThrottle });
 const bootedAt = Date.now();
 let boundPort = BASE_PORT;
 let karingErrorCache = { at: 0, error: null };
@@ -224,6 +224,7 @@ async function ensureAutostart() {
 }
 
 let proxyCleanupBusy = false;
+let proxyWatch = { clearedAt: 0, previous: null };
 
 async function runProxyCleanup() {
   if (proxyCleanupBusy || process.platform !== 'win32') return;
@@ -231,6 +232,7 @@ async function runProxyCleanup() {
   try {
     const result = await cleanupStaleProxy();
     if (result.cleared) {
+      proxyWatch = { clearedAt: Date.now(), previous: result.previous };
       console.log(`تنظیم پروکسی سیستم پس از قطع VPN پاک شد: ${result.previous}`);
     }
   } catch (error) {
@@ -238,6 +240,27 @@ async function runProxyCleanup() {
   } finally {
     proxyCleanupBusy = false;
   }
+}
+
+let proxyAliveCache = { at: 0, value: null };
+
+// Testing nodes opens many parallel connections; while a local VPN proxy is
+// actually serving traffic that saturates the link and breaks browsing.
+async function testThrottle() {
+  const now = Date.now();
+  if (now - proxyAliveCache.at < 10_000) return proxyAliveCache.value;
+  let value = null;
+  try {
+    const proxy = await activeLocalProxy();
+    if (proxy) {
+      value = {
+        concurrency: 2,
+        reason: `پروکسی محلی ${proxy.host}:${proxy.port} فعال است`,
+      };
+    }
+  } catch {}
+  proxyAliveCache = { at: now, value };
+  return value;
 }
 
 function probeExistingInstance(port) {
@@ -343,6 +366,7 @@ function serverOrigin() {
 }
 
 let v2nCache = { at: 0, value: null };
+let lastAutoCleaned = null;
 async function buildV2rayNStatus(force = false) {
   const ttl = v2rayn.sqliteAvailable() ? 20_000 : 5_000;
   if (!force && v2nCache.value && Date.now() - v2nCache.at < ttl) return v2nCache.value;
@@ -352,6 +376,29 @@ async function buildV2rayNStatus(force = false) {
   } catch (error) {
     value = { available: false, error: cleanText(error.message, 300), registered: false, nodes: 0 };
   }
+
+  // v2rayN restores subscriptions from memory when it closes, so the sing-box
+  // JSON address the user imported comes back; heal it whenever the app is shut.
+  if (value.junk && value.junk.hasJunk && !value.running) {
+    try {
+      const cleaned = await v2rayn.cleanupJunk(serverOrigin());
+      if (cleaned.removedSubs || cleaned.removedRows) {
+        value = { ...await v2rayn.inspect(v2raySubUrl(), serverOrigin()) };
+        value.autoCleaned = { at: Date.now(), ...cleaned };
+        lastAutoCleaned = value.autoCleaned;
+        console.log(`نودهای خراب v2rayN پاک شد: ${cleaned.removedRows} ردیف، ${cleaned.removedSubs} اشتراک`);
+      } else if (lastAutoCleaned) {
+        value.autoCleaned = lastAutoCleaned;
+      }
+    } catch (error) {
+      value.autoCleanError = cleanText(error.message, 200);
+    }
+  } else if (lastAutoCleaned && Date.now() - lastAutoCleaned.at < 10 * 60_000) {
+    value.autoCleaned = lastAutoCleaned;
+  } else {
+    lastAutoCleaned = null;
+  }
+
   v2nCache = { at: Date.now(), value };
   return value;
 }
@@ -391,6 +438,7 @@ function buildStatus(autostart) {
       v2ray: buildV2rayInfo(),
     },
     autostart,
+    proxy: { clearedAt: proxyWatch.clearedAt, previous: proxyWatch.previous },
   };
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "karing-node-doctor",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "private": true,
   "description": "تست خودکار نودهای Karing و ساخت ساب‌سکریپشن و لینک v2ray فقط از نودهای سالم",
   "main": "app.js",

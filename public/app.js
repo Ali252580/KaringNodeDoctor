@@ -105,6 +105,12 @@ function renderStatus(status) {
   const karingError = status.karing && status.karing.error;
   const lastRun = status.lastRun;
 
+  const proxy = status.proxy || {};
+  if (proxy.clearedAt && proxy.clearedAt !== lastProxyClearToast) {
+    lastProxyClearToast = proxy.clearedAt;
+    toast(`پراکسی سیستم روشن و به پورت مردهٔ ${proxy.previous || 'VPN'} وصل بود؛ اینترنت شما آزاد شد.`);
+  }
+
   let pillClass = 'pill pill-ready';
   let pillText = 'آماده';
   if (run.running) {
@@ -151,6 +157,9 @@ function renderStatus(status) {
       desc = planned
         ? `${fmt(tested)} از ${fmt(planned)} نود تست شده است؛ نتیجه‌ها زنده ذخیره می‌شوند.`
         : 'در حال آماده‌سازی بسته‌های تست…';
+      if (run.throttled) {
+        desc += ` (تست آهسته شده است: ${run.throttled.reason || 'ترافیک VPN در حال استفاده است'})`;
+      }
       percent = planned ? Math.min(99, Math.round((tested / planned) * 100)) : 8;
     }
   } else if (karingError) {
@@ -319,6 +328,7 @@ function relTimeFromTs(seconds) {
 
 let v2Busy = false;
 let v2RegSignature = '';
+let lastProxyClearToast = 0;
 
 function renderV2ray(status) {
   const info = status.subscription && status.subscription.v2ray;
@@ -364,7 +374,7 @@ function renderV2rayN(client, linkCount, httpLinks) {
     total, Number(httpLinks) || 0, client.available, client.running, client.registered, client.nodes,
     client.autoUpdateMinutes, client.updateTime, client.error || null,
     client.core ? [client.core.available, client.core.singbox, client.core.tun && client.core.tun.enableTun, client.core.error || null] : null,
-    client.junk ? [client.junk.foreignSubs.length, client.junk.outboundRows] : null,
+    client.junk ? [client.junk.foreignSubs.length, client.junk.outboundRows, client.autoCleaned ? client.autoCleaned.at : 0] : null,
   ]);
   if (v2RegSignature === signature) return;
   v2RegSignature = signature;
@@ -395,6 +405,8 @@ function renderV2rayN(client, linkCount, httpLinks) {
   const chips = [];
   if (junk.foreignSubs.length || junk.outboundRows) {
     chips.push(`<span class="chip warn">${fmt(junk.outboundRows)} نود خراب${junk.foreignSubs.length ? ` • ${fmt(junk.foreignSubs.length)} اشتراک sing-box` : ''}</span>`);
+  } else if (client.autoCleaned) {
+    chips.push('<span class="chip ok">نودهای خراب v2rayN خودکار پاک شدند</span>');
   }
   if (core.available) {
     chips.push(core.singbox
@@ -434,7 +446,9 @@ function renderV2rayN(client, linkCount, httpLinks) {
 
   if (junk.foreignSubs.length || junk.outboundRows) {
     note.hidden = false;
-    note.textContent = 'آدرس sing-box کی‌رینگ (‎/sub/….json) در v2rayN وارد شده؛ آن اشتراک فقط برای Karing است و در v2rayN نودهای Outbound با Port 0 می‌سازد که هرگز وصل نمی‌شوند. با دکمهٔ پاک‌سازی آن‌ها را حذف کنید و فقط اشتراک KaringNodeDoctor را نگه دارید.';
+    note.textContent = client.running
+      ? 'آدرس sing-box کی‌رینگ (‎/sub/….json) در v2rayN وارد شده؛ این آدرس فقط برای Karing است. v2rayN را کامل ببندید تا همین برنامه نودهای خرابش را خودش پاک کند.'
+      : 'آدرس sing-box کی‌رینگ (‎/sub/….json) در v2rayN وارد شده و نودهای Outbound با Port 0 ساخته است؛ آن نودها هرگز وصل نمی‌شوند. با دکمهٔ پاک‌سازی (یا خودکار، وقتی v2rayN بسته است) حذف می‌شوند — لطفاً همان آدرس را دوباره در v2rayN وارد نکنید.';
   } else if (client.registered && client.running && (client.nodes || 0) === 0) {
     note.hidden = false;
     note.textContent = 'v2rayN باز است و اشتراک را در حافظه ندارد؛ یک‌بار کامل ببندید و باز کنید تا نودها وارد شوند.';
