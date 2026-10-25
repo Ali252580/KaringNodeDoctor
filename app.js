@@ -14,7 +14,7 @@ const { readSubscriptionSync, readTunSetting, writeTunSetting, isKaringRunning }
 const { cleanText } = require('./lib/util');
 const v2rayn = require('./lib/v2rayn');
 
-const VERSION = '1.1.5';
+const VERSION = '1.1.6';
 const ROOT = __dirname;
 const HOST = '127.0.0.1';
 const BASE_PORT = Number(process.env.KND_PORT) || 3210;
@@ -325,16 +325,21 @@ function buildV2rayInfo() {
       path: `/v2ray/${store.data.subToken}.txt`,
       url: v2raySubUrl(),
       count: generated.count,
+      httpLinks: generated.links.filter((link) => link.startsWith('http://')).length,
       skipped: generated.skipped,
       skippedCount: generated.skippedCount,
     };
   } catch {
-    return { path: `/v2ray/${store.data.subToken}.txt`, url: v2raySubUrl(), count: 0, skipped: {}, skippedCount: 0 };
+    return { path: `/v2ray/${store.data.subToken}.txt`, url: v2raySubUrl(), count: 0, httpLinks: 0, skipped: {}, skippedCount: 0 };
   }
 }
 
 function v2raySubUrl() {
   return `http://${HOST}:${boundPort}/v2ray/${store.data.subToken}.txt`;
+}
+
+function serverOrigin() {
+  return `http://${HOST}:${boundPort}`;
 }
 
 let v2nCache = { at: 0, value: null };
@@ -343,7 +348,7 @@ async function buildV2rayNStatus(force = false) {
   if (!force && v2nCache.value && Date.now() - v2nCache.at < ttl) return v2nCache.value;
   let value;
   try {
-    value = await v2rayn.inspect(v2raySubUrl());
+    value = await v2rayn.inspect(v2raySubUrl(), serverOrigin());
   } catch (error) {
     value = { available: false, error: cleanText(error.message, 300), registered: false, nodes: 0 };
   }
@@ -533,9 +538,13 @@ async function handleApi(req, res, pathname) {
         const result = await v2rayn.register(url, body && body.intervalMinutes);
         let core = null;
         let coreError = null;
+        let cleaned = null;
         if (await v2rayn.isV2rayNRunning()) {
           coreError = 'v2rayN باز است؛ آن را کامل ببندید تا موتور sing-box را فعال کنم (بدون آن نودهای بدون TLS کار نمی‌کنند).';
         } else {
+          try {
+            cleaned = await v2rayn.cleanupJunk(serverOrigin());
+          } catch {}
           try {
             core = v2rayn.applySingboxCore(result.dbPath, url);
           } catch (error) {
@@ -547,6 +556,7 @@ async function handleApi(req, res, pathname) {
           ok: true,
           registered: true,
           coreApplied: Boolean(core),
+          cleaned: cleaned ? { subs: cleaned.removedSubs, rows: cleaned.removedRows } : null,
           autoUpdateMinutes: result.intervalMinutes,
           note: coreError
             || 'اشتراک ثبت شد و موتور v2rayN روی sing-box تنظیم شد. حالا v2rayN را باز کنید و به یکی از نودها متصل شوید.',
@@ -578,6 +588,26 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 200, { ok: true, ...result });
     } catch (error) {
       return sendJson(res, 500, { error: cleanText(error.message, 300) || 'تغییر موتور v2rayN ممکن نشد.' });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/v2rayn/cleanup') {
+    try {
+      if (await v2rayn.isV2rayNRunning()) {
+        return sendJson(res, 409, { error: 'برای پاک‌کردن نودهای خراب، اول v2rayN را کامل ببندید (آیکون کنار ساعت → Quit).' });
+      }
+      const result = await v2rayn.cleanupJunk(serverOrigin());
+      await buildV2rayNStatus(true);
+      if (!result.removedSubs && !result.removedRows) {
+        return sendJson(res, 200, { ok: true, ...result, note: 'چیزی برای پاک‌کردن پیدا نشد.' });
+      }
+      return sendJson(res, 200, {
+        ok: true,
+        ...result,
+        note: `${result.removedRows} نود خراب و ${result.removedSubs} اشتراک نامعتبر حذف شد${result.backup ? '؛ از پایگاه‌داده نسخهٔ پشتیبان گرفته شد' : ''}. حالا فقط اشتراک KaringNodeDoctor را در v2rayN نگه دارید.`,
+      });
+    } catch (error) {
+      return sendJson(res, 500, { error: cleanText(error.message, 300) || 'پاک‌سازی v2rayN ممکن نشد.' });
     }
   }
 

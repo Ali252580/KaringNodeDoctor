@@ -74,6 +74,7 @@
           <span class="sep" aria-hidden="true"></span>
           <span><strong id="subHealthy">۰</strong> نود سالم تأییدشده</span>
         </div>
+        <p class="muted small">این آدرس فقط برای <b>Karing</b> است؛ آن را در v2rayN وارد نکنید، چون v2rayN فایل sing-box را به نودهای خراب تبدیل می‌کند.</p>
         <div id="karingSync" class="sync-box" hidden>
           <div class="sync-head">
             <span class="sync-dot" aria-hidden="true"></span>
@@ -123,6 +124,7 @@
         <div id="v2EngineRow" class="chip-row" hidden></div>
         <button id="v2RegBtn" class="btn btn-primary wide" type="button" disabled>—</button>
         <button id="v2CoreBtn" class="btn btn-ghost wide" type="button" hidden>تغییر موتور v2rayN به sing-box</button>
+        <button id="v2CleanBtn" class="btn btn-ghost wide" type="button" hidden>پاک‌کردن نودهای خراب از v2rayN</button>
         <button id="v2AdminBtn" class="btn btn-ghost wide" type="button" hidden>اجرای v2rayN با ادمین (برای TUN)</button>
         <p id="v2Note" class="muted small" hidden></p>
         <details class="howto">
@@ -133,6 +135,7 @@
             <li>موتور v2rayN روی <b>sing-box</b> تنظیم می‌شود؛ xray در نسخه‌های جدید نودهای بدون TLS یا <code dir="ltr">allowInsecure</code> را رد می‌کند و اتصال برقرار نمی‌شود.</li>
             <li>حالت TUN در v2rayN فقط وقتی <b>Run as administrator</b> اجرا شود کار می‌کند؛ اگر لازم ندارید، سیستم‌پراکسی همان مرورگر کافی است.</li>
             <li>اگر v2rayN موقع ثبت کردن باز باشد، یک‌بار کامل آن را ببندید و باز کنید تا اشتراک را بارگذاری کند.</li>
+            <li>آدرس <b>Karing</b> (<code dir="ltr">/sub/….json</code>) را در v2rayN وارد <b> نکنید</b>؛ v2rayN آن را به نودهای بی‌فایدهٔ <code dir="ltr">Outbound</code> با Port 0 تبدیل می‌کند. فقط آدرس بالا (<code dir="ltr">/v2ray/….txt</code>) برای v2rayN است.</li>
             <li>برنامه باید روشن بماند؛ آدرس روی <code dir="ltr">127.0.0.1</code> است.</li>
           </ol>
           <p class="muted small">برای v2rayA هم همین آدرس کار می‌کند؛ فقط باید دستی <b>Import</b> بگیرید.</p>

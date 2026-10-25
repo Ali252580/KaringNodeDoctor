@@ -336,10 +336,10 @@ function renderV2ray(status) {
   }
   row.hidden = !skipped.length;
 
-  renderV2rayN(status.v2rayN, info.count);
+  renderV2rayN(status.v2rayN, info.count, info.httpLinks);
 }
 
-function renderV2rayN(client, linkCount) {
+function renderV2rayN(client, linkCount, httpLinks) {
   const badge = $('v2Badge');
   const button = $('v2RegBtn');
   const note = $('v2Note');
@@ -361,9 +361,10 @@ function renderV2rayN(client, linkCount) {
     : (client.registered ? `خودکار • ${fmt(total)} لینک` : `ثبت‌نشده • ${fmt(total)} لینک`);
 
   const signature = JSON.stringify([
-    total, client.available, client.running, client.registered, client.nodes,
+    total, Number(httpLinks) || 0, client.available, client.running, client.registered, client.nodes,
     client.autoUpdateMinutes, client.updateTime, client.error || null,
     client.core ? [client.core.available, client.core.singbox, client.core.tun && client.core.tun.enableTun, client.core.error || null] : null,
+    client.junk ? [client.junk.foreignSubs.length, client.junk.outboundRows] : null,
   ]);
   if (v2RegSignature === signature) return;
   v2RegSignature = signature;
@@ -389,8 +390,12 @@ function renderV2rayN(client, linkCount) {
     : `وضعیت v2rayN: ${client.running ? 'باز است' : 'بسته است'}`;
 
   const core = client.core || {};
+  const junk = client.junk || { foreignSubs: [], outboundRows: 0 };
   const engine = $('v2EngineRow');
   const chips = [];
+  if (junk.foreignSubs.length || junk.outboundRows) {
+    chips.push(`<span class="chip warn">${fmt(junk.outboundRows)} نود خراب${junk.foreignSubs.length ? ` • ${fmt(junk.foreignSubs.length)} اشتراک sing-box` : ''}</span>`);
+  }
   if (core.available) {
     chips.push(core.singbox
       ? '<span class="chip ok">موتور: sing-box</span>'
@@ -415,12 +420,22 @@ function renderV2rayN(client, linkCount) {
   adminBtn.hidden = !(core.available && core.tun && core.tun.enableTun);
   adminBtn.disabled = v2Busy;
 
+  const cleanBtn = $('v2CleanBtn');
+  cleanBtn.hidden = !(junk.foreignSubs.length || junk.outboundRows);
+  cleanBtn.disabled = Boolean(client.running) || v2Busy;
+  cleanBtn.textContent = client.running
+    ? 'برای پاک‌سازی، اول v2rayN را ببندید'
+    : `پاک‌کردن ${fmt(junk.outboundRows || junk.foreignSubs.length)} مورد خراب از v2rayN`;
+
   if (!v2Busy) {
     button.disabled = false;
     button.textContent = client.registered ? 'حذف اشتراک از v2rayN' : 'افزودن خودکار به v2rayN';
   }
 
-  if (client.registered && client.running && (client.nodes || 0) === 0) {
+  if (junk.foreignSubs.length || junk.outboundRows) {
+    note.hidden = false;
+    note.textContent = 'آدرس sing-box کی‌رینگ (‎/sub/….json) در v2rayN وارد شده؛ آن اشتراک فقط برای Karing است و در v2rayN نودهای Outbound با Port 0 می‌سازد که هرگز وصل نمی‌شوند. با دکمهٔ پاک‌سازی آن‌ها را حذف کنید و فقط اشتراک KaringNodeDoctor را نگه دارید.';
+  } else if (client.registered && client.running && (client.nodes || 0) === 0) {
     note.hidden = false;
     note.textContent = 'v2rayN باز است و اشتراک را در حافظه ندارد؛ یک‌بار کامل ببندید و باز کنید تا نودها وارد شوند.';
   } else if (client.registered && core.available && !core.singbox) {
@@ -428,7 +443,10 @@ function renderV2rayN(client, linkCount) {
     note.textContent = 'v2rayN نودها را با موتور xray اجرا می‌کند و نودهای بدون TLS یا ناامین را وصل نمی‌کند. با دکمهٔ پایین موتور را sing-box کنید (v2rayN باید بسته باشد؛ تست برنامه هم با sing-box انجام می‌شود).';
   } else if (client.registered && total > (client.nodes || 0)) {
     note.hidden = false;
-    note.textContent = `${fmt(total - (client.nodes || 0))} لینک وارد نشده است — v2rayN لینک‌های http:// را از اشتراک نمی‌خواند.`;
+    const missing = fmt(total - (client.nodes || 0));
+    note.textContent = Number(httpLinks) > 0
+      ? `${missing} لینک وارد نشده است — v2rayN لینک‌های http:// را از اشتراک نمی‌خواند.`
+      : `${missing} نود هنوز در v2rayN نیست؛ v2rayN را باز کنید یا روی اشتراک راست‌کلیک کرده و Update را بزنید.`;
   } else {
     note.hidden = true;
   }
@@ -1024,6 +1042,25 @@ $('v2CoreBtn').addEventListener('click', async () => {
     const result = await api('/api/v2rayn/core', { method: 'POST', body: '{}' });
     v2RegSignature = '';
     toast(`موتور v2rayN روی sing-box تنظیم شد (${fmt(result.profiles || 0)} نود به‌روز شد).`);
+    await refreshStatus(false);
+  } catch (error) {
+    toast(error.message, true);
+    v2RegSignature = '';
+    await refreshStatus(false);
+  } finally {
+    v2Busy = false;
+  }
+});
+
+$('v2CleanBtn').addEventListener('click', async () => {
+  const button = $('v2CleanBtn');
+  v2Busy = true;
+  button.disabled = true;
+  button.textContent = 'در حال پاک‌سازی v2rayN…';
+  try {
+    const result = await api('/api/v2rayn/cleanup', { method: 'POST', body: '{}' });
+    v2RegSignature = '';
+    toast(result.note || 'پاک‌سازی انجام شد.');
     await refreshStatus(false);
   } catch (error) {
     toast(error.message, true);
